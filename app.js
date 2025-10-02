@@ -21,7 +21,6 @@ const reviewRouter = require("./routes/review.js");
 const userRouter = require("./routes/user.js");
 const bookingRouter = require("./routes/booking.js");
 
-
 const dbUrl = process.env.ATLASDB_URL;
 
 main()
@@ -113,6 +112,10 @@ app.use("/bookings", bookingRouter);
 //     console.log("sample was saved");
 //     res.send("Successful Testing");
 // });
+
+app.all("/", (req, res, next) => {
+  res.redirect("/listings");
+});
 
 app.all(/.*/, (req, res, next) => {
   next(new ExpressError(404, "Page Not Found"));
