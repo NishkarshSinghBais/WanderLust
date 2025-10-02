@@ -1,19 +1,107 @@
 <% layout("/layouts/boilerplate") -%>
-<div>
-<h3>Book <%= listing.title %></h3>
-<form action="/bookings/<%= listing._id %>" method="POST">
-  <div class="mb-3">
-    <label for="checkIn" class="form-label">Check In</label>
-    <input type="date" name="booking[checkIn]" id="checkIn" class="form-control" required>
+
+<div class="row mt-3">
+  <div class="col-8 offset-2">
+    <h3>Book Your Stay</h3>
+    <form id="bookingForm" class="needs-validation" novalidate>
+      <div class="mb-3">
+        <label for="checkIn" class="form-label">Check-in Date</label>
+        <input
+          type="date"
+          id="checkIn"
+          name="booking[checkIn]"
+          class="form-control"
+          required
+        />
+        <div class="invalid-feedback">Please select a check-in date</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="checkOut" class="form-label">Check-out Date</label>
+        <input
+          type="date"
+          id="checkOut"
+          name="booking[checkOut]"
+          class="form-control"
+          required
+        />
+        <div class="invalid-feedback">Please select a check-out date</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="guests" class="form-label">Guests</label>
+        <input
+          type="number"
+          id="guests"
+          name="booking[guests]"
+          class="form-control"
+          min="1"
+          required
+        />
+        <div class="invalid-feedback">Please enter number of guests</div>
+      </div>
+
+      <button
+        id="payBtn"
+        type="button"
+        class="btn btn-dark mt-3 w-100"
+      >
+        Pay & Confirm Booking
+      </button>
+    </form>
   </div>
-  <div class="mb-3">
-    <label for="checkOut" class="form-label">Check Out</label>
-    <input type="date" name="booking[checkOut]" id="checkOut" class="form-control" required>
-  </div>
-  <div class="mb-3">
-    <label for="guests" class="form-label">Guests</label>
-    <input type="number" name="booking[guests]" id="guests" class="form-control" min="1" required>
-  </div>
-  <button class="btn btn-success">Confirm Booking</button>
-</form>
 </div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  document.getElementById("payBtn").onclick = async function () {
+    const form = document.getElementById("bookingForm");
+    const formData = new FormData(form);
+    const bookingData = Object.fromEntries(formData.entries());
+
+    const listingId = "<%= listing._id %>";
+
+    // 1. Create Razorpay order from backend
+    const res = await fetch(`/bookings/${listingId}/order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingData })
+    });
+
+    const data = await res.json();
+
+    // 2. Razorpay options
+    const options = {
+      key: "<%= key %>",
+      amount: data.order.amount,
+      currency: "INR",
+      name: "WanderLust Booking",
+      description: "Secure your booking",
+      order_id: data.order.id,
+      handler: async function (response) {
+        // 3. Verify payment
+        const verifyRes = await fetch("/bookings/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            listingId: listingId,
+            bookingData: bookingData
+          })
+        });
+
+        const result = await verifyRes.json();
+        if (result.success) {
+          window.location.href = result.redirectUrl;
+        } else {
+          alert("Payment failed. Try again.");
+        }
+      }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  };
+</script>

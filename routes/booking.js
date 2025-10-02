@@ -6,7 +6,10 @@ const bookingController = require("../controllers/booking.js");
 // Show booking form
 router.get("/:id/new", isLoggedIn, bookingController.renderNewBookingForm);
 
-// Handle booking submission
-router.post("/:id", isLoggedIn, bookingController.createBooking);
+// Create Razorpay order
+router.post("/:id/order", isLoggedIn, bookingController.createOrder);
+
+// Verify payment + confirm booking
+router.post("/verify", isLoggedIn, bookingController.verifyPayment);
 
 module.exports = router;
